@@ -1,0 +1,27 @@
+sources:
+  docker_logs:
+    type: docker_logs
+    auto_partial_merge: true
+    include_containers:
+      - "*"
+
+  syslog_logs:
+    type: syslog
+    address: "0.0.0.0:514"
+    mode: udp
+
+transforms:
+  add_host:
+    type: remap
+    inputs:
+      - docker_logs
+      - syslog_logs
+    source: |
+      .hostname = get_env_var("HOSTNAME") ?? "unknown"
+sinks:
+  to_vector:
+    type: vector
+    inputs:
+     - add_host
+    address: 192.168.56.13:9000
+    healthcheck: false

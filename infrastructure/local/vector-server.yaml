@@ -1,0 +1,45 @@
+data_dir: /var/lib/vector
+
+sources:
+  syslog_udp:
+    type: syslog
+    address: "0.0.0.0:514"
+    mode: udp
+
+  syslog_tcp:
+    type: syslog
+    address: "0.0.0.0:514"
+    mode: tcp
+
+  from_vector:
+    type: vector
+    address: "0.0.0.0:9000"
+
+transforms:
+  enrich_metadata:
+    type: remap
+    inputs:
+      - syslog_udp
+      - syslog_tcp
+      - from_vector
+    source: |
+      .received_at = now()
+      .host = get_env_var("HOSTNAME") ?? "collector"
+      .log_source = .source ?? "unknown"
+
+sinks:
+  to_console:
+    type: console
+    inputs:
+      - enrich_metadata
+    encoding:
+      codec: json
+
+  to_file:
+    type: file
+    inputs:
+      - enrich_metadata
+    path: /var/log/vector/all_logs.log
+    encoding:
+      codec: json
+    compression: none
