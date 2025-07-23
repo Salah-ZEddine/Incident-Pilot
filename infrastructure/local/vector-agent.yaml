@@ -1,3 +1,19 @@
+#                                    __   __  __
+#                                    \ \ / / / /
+#                                     \ V / / /
+#                                      \_/  \/
+#
+#                                    V E C T O R
+#                                   Configuration
+#
+# ------------------------------------------------------------------------------
+# Website: https://vector.dev
+# Docs: https://vector.dev/docs
+# Chat: https://chat.vector.dev
+# ------------------------------------------------------------------------------
+
+# Change this to use a non-default directory for Vector data storage:
+# data_dir: "/var/lib/vector"
 sources:
   docker_logs:
     type: docker_logs
@@ -5,23 +21,54 @@ sources:
     include_containers:
       - "*"
 
-  syslog_logs:
+  syslog_udp:
     type: syslog
     address: "0.0.0.0:514"
     mode: udp
+
+  syslog_tcp:
+    type: syslog
+    address: "0.0.0.0:514"
+    mode: tcp
 
 transforms:
   add_host:
     type: remap
     inputs:
       - docker_logs
-      - syslog_logs
+      - syslog_udp
+      - syslog_tcp
     source: |
-      .hostname = get_env_var("HOSTNAME") ?? "unknown"
+      .hostname = get_env_var("HOSTNAME") ?? "node2"
+
 sinks:
+  to_disk_file:
+    type: file
+    inputs:
+      - add_host
+    path: "/var/log/vector/buffered_logs.log"
+    encoding:
+      codec: json
+    buffer:
+      type: disk
+      max_size: 524288000     # job is required to delete old logs ( by default, vector drops new logs )
+      when_full: block
   to_vector:
     type: vector
-    inputs:
-     - add_host
+    inputs: [add_host]
     address: 192.168.56.13:9000
+    acknowledgements: true
     healthcheck: false
+    buffer:
+      type: disk
+      max_size: 524288000    #(500MiB)
+      when_full: block
+
+
+# Optional: read back from backup file (useful for replay/testing)
+# Note: avoid loops by sending it to a test sink only
+# sources:
+#   from_file_backup:
+#     type: file
+#     path: /var/log/vector/backup.log
+#     ignore_older: 86400  # 1 day

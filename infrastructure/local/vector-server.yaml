@@ -1,5 +1,19 @@
-data_dir: /var/lib/vector
+#                                    __   __  __
+#                                    \ \ / / / /
+#                                     \ V / / /
+#                                      \_/  \/
+#
+#                                    V E C T O R
+#                                   Configuration
+#
+# ------------------------------------------------------------------------------
+# Website: https://vector.dev
+# Docs: https://vector.dev/docs
+# Chat: https://chat.vector.dev
+# ------------------------------------------------------------------------------
 
+# Change this to use a non-default directory for Vector data storage:
+# data_dir: "/var/lib/vector"
 sources:
   syslog_udp:
     type: syslog
@@ -25,7 +39,7 @@ transforms:
     source: |
       .received_at = now()
       .host = get_env_var("HOSTNAME") ?? "collector"
-      .log_source = .source ?? "unknown"
+      .log_source = .source
 
 sinks:
   to_console:
@@ -34,6 +48,10 @@ sinks:
       - enrich_metadata
     encoding:
       codec: json
+    buffer:
+      type: disk
+      max_size: 524288000      # adjust based on disk availability
+      when_full: block      # block to prevent data loss
 
   to_file:
     type: file
@@ -43,3 +61,7 @@ sinks:
     encoding:
       codec: json
     compression: none
+    buffer:
+      type: disk
+      max_size: 524288000      # adjust as needed
+      when_full: block
