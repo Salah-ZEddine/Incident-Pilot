@@ -18,8 +18,7 @@ sources:
   docker_logs:
     type: docker_logs
     auto_partial_merge: true
-    include_containers:
-      - "*"
+
 
   syslog_udp:
     type: syslog
@@ -30,6 +29,10 @@ sources:
     type: syslog
     address: "0.0.0.0:514"
     mode: tcp
+  
+  journald_logs:
+    type: journald
+    include_units: ["sshd", "nginx", "docker", "systemd", "auditd"]   # Leave empty to include all units (e.g. sshd, systemd, etc.)
 
 transforms:
   add_host:
@@ -38,8 +41,9 @@ transforms:
       - docker_logs
       - syslog_udp
       - syslog_tcp
+      - journald_logs
     source: |
-      .hostname = get_env_var("HOSTNAME") ?? "node2"
+      .hostname = host().hostname
 
 sinks:
   to_disk_file:
