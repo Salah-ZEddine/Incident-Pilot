@@ -23,7 +23,7 @@ fi
 ### --- Install Docker only on vector-node1 and vector-node2 ---
 HOSTNAME=$(hostname)
 
-if [[ "$HOSTNAME" == "vector-node1" || "$HOSTNAME" == "vector-node2" ]]; then
+if [[ "$HOSTNAME" != "vector-node3" ]]; then
   if ! command -v docker &> /dev/null; then
     echo "[INFO] Docker not found. Installing Docker on $HOSTNAME..."
     curl -fsSL https://get.docker.com -o get-docker.sh

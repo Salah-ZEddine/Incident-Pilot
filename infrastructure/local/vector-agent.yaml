@@ -43,7 +43,7 @@ transforms:
       - syslog_tcp
       - journald_logs
     source: |
-      .hostname = host().hostname
+      .hostname = get_env_var("HOSTNAME") ?? "node4"
 
 sinks:
   to_disk_file:
@@ -53,15 +53,15 @@ sinks:
     path: "/var/log/vector/buffered_logs.log"
     encoding:
       codec: json
-    buffer:
-      type: disk
-      max_size: 524288000     # job is required to delete old logs ( by default, vector drops new logs )
-      when_full: block
+    # buffer:
+    #   type: disk
+    #   max_size: 524288000     # job is required to delete old logs ( by default, vector drops new logs )
+    #   when_full: block
   to_vector:
     type: vector
     inputs: [add_host]
     address: 192.168.56.13:9000
-    acknowledgements: true
+    acknowledgements: false
     healthcheck: false
     buffer:
       type: disk
