@@ -57,3 +57,4 @@ echo -e "\n✅ Vector agent setup completed!"
 ## sudo chown -R root:vector /var/lib/docker/containers/
 ## usermod -aG vector,docker vector
 ## it worked when vector didn't catch containers message logs but only catches journald docker logs 
+## restart vector service
