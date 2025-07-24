@@ -35,7 +35,7 @@ sources:
     include_units: ["sshd", "nginx", "docker", "systemd", "auditd"]   # Leave empty to include all units (e.g. sshd, systemd, etc.)
 
 transforms:
-  add_host:
+  add_hostname:
     type: remap
     inputs:
       - docker_logs
@@ -45,21 +45,65 @@ transforms:
     source: |
       .hostname = get_env_var("HOSTNAME") ?? "node4"
 
+  tag_log_type_by_unit:
+    type: remap
+    inputs: [add_hostname]
+    source: |
+      if exists(.systemd.unit) {
+        unit = downcase(string!(.systemd.unit))
+
+        if unit == "sshd.service" {
+          .log_type = "auth"
+        } else if unit == "auditd.service" {
+          .log_type = "audit"
+        } else if unit == "systemd.service" {
+          .log_type = "system"
+        } else if starts_with(unit, "nginx") {
+          .log_type = "nginx"
+        } else if unit == "docker.service" {
+          .log_type = "docker"
+        } else {
+          .log_type = "service"
+        }
+      } else {
+        .log_type = "unknown"
+      }
+
+  parse_json_logs:
+    type: remap
+    inputs: [tag_log_type_by_unit]  # changed from add_hostname
+    source: |
+      parsed, err = parse_json(.message)
+      if err == null {
+        ., err = merge(., parsed)
+      }
+
+  drop_noise:
+    type: filter
+    inputs: [parse_json_logs]
+    condition: |
+      !includes(["info", "notice"], .log_level)
+
+  add_metadata:
+    type: remap
+    inputs: [drop_noise]
+    source: |
+      .pipeline_stage = "ingest"
+      .received_at = now()
+      .app_source = .source
+
 sinks:
   to_disk_file:
     type: file
     inputs:
-      - add_host
+      - add_metadata
     path: "/var/log/vector/buffered_logs.log"
     encoding:
       codec: json
-    # buffer:
-    #   type: disk
-    #   max_size: 524288000     # job is required to delete old logs ( by default, vector drops new logs )
-    #   when_full: block
+
   to_vector:
     type: vector
-    inputs: [add_host]
+    inputs: [add_metadata]
     address: 192.168.56.13:9000
     acknowledgements: false
     healthcheck: false
