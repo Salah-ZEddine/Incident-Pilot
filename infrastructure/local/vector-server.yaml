@@ -14,54 +14,50 @@
 
 # Change this to use a non-default directory for Vector data storage:
 # data_dir: "/var/lib/vector"
+api:
+  enabled: true
+
 sources:
-  syslog_udp:
-    type: syslog
-    address: "0.0.0.0:514"
-    mode: udp
-
-  syslog_tcp:
-    type: syslog
-    address: "0.0.0.0:514"
-    mode: tcp
-
-  from_vector:
+  agent_logs:
     type: vector
     address: "0.0.0.0:9000"
 
 transforms:
-  enrich_metadata:
+  add_server_metadata:
     type: remap
     inputs:
-      - syslog_udp
-      - syslog_tcp
-      - from_vector
+      - agent_logs
     source: |
+      .host = host().hostname
       .received_at = now()
-      .host = get_env_var("HOSTNAME") ?? "collector"
-      .log_source = .source
+      .pipeline_stage = "receive"
+
+  for_siem:
+    type: filter
+    inputs:
+      - add_server_metadata
+    condition: '.log_type in ["auth", "audit", "system", "sshd", "journal"]'
+
+  for_app:
+    type: filter
+    inputs:
+      - add_server_metadata
+    condition: '.log_type in ["nginx", "docker", "app"]'
 
 sinks:
-  to_console:
-    type: console
-    inputs:
-      - enrich_metadata
-    encoding:
-      codec: json
-    buffer:
-      type: disk
-      max_size: 524288000      # adjust based on disk availability
-      when_full: block      # block to prevent data loss
-
-  to_file:
+  to_siem:
     type: file
     inputs:
-      - enrich_metadata
-    path: /var/log/vector/all_logs.log
+      - for_siem
+    path: "/var/log/vector/siem_logs.json"
     encoding:
       codec: json
-    compression: none
-    buffer:
-      type: disk
-      max_size: 524288000      # adjust as needed
-      when_full: block
+
+  to_kafka:
+    type: kafka
+    inputs:
+      - for_app
+    bootstrap_servers: "10.0.2.2:9092"
+    topic: "app_logs"
+    encoding:
+      codec: json

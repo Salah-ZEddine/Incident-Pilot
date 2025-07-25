@@ -29,7 +29,7 @@ sources:
     type: syslog
     address: "0.0.0.0:514"
     mode: tcp
-  
+
   journald_logs:
     type: journald
     include_units: ["sshd", "nginx", "docker", "systemd", "auditd"]   # Leave empty to include all units (e.g. sshd, systemd, etc.)
@@ -82,7 +82,8 @@ transforms:
     type: filter
     inputs: [parse_json_logs]
     condition: |
-      !includes(["info", "notice"], .log_level)
+      !(includes(["info", "notice"], .level) ||
+        includes(["info", "notice"], .log_level))
 
   add_metadata:
     type: remap
