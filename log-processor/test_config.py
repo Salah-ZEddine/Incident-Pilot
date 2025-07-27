@@ -1,4 +1,4 @@
-from config import settings
+from app.config import settings
 
 def test_print_config():
     print("PostgreSQL Config:")
@@ -10,8 +10,8 @@ def test_print_config():
     print()
     print("Kafka Config:")
     print(f"  Bootstrap Servers: {settings.kafka_bootstrap_servers}")
-    print(f"  Raw Topic: {settings.kafka_raw_topic}")
-    print(f"  Fact Topic: {settings.kafka_fact_topic}")
+    print(f"  Raw Topic: {settings.kafka_topic_input}")
+    print(f"  Fact Topic: {settings.kafka_topic_output}")
     print(f"  Consumer Group ID: {settings.kafka_group_id}")
 
 if __name__ == "__main__":
