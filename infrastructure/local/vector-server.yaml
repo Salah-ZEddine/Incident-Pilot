@@ -28,7 +28,7 @@ transforms:
     inputs:
       - agent_logs
     source: |
-      .host = host().hostname
+      .host = get_env_var("HOSTNAME") ?? "node4"
       .received_at = now()
       .pipeline_stage = "receive"
 
@@ -36,13 +36,13 @@ transforms:
     type: filter
     inputs:
       - add_server_metadata
-    condition: '.log_type in ["auth", "audit", "system", "sshd", "journal"]'
+    condition: includes(["auth", "audit", "system", "sshd", "journal"], to_string(.log_type) ?? "")
 
   for_app:
     type: filter
     inputs:
       - add_server_metadata
-    condition: '.log_type in ["nginx", "docker", "app"]'
+    condition: includes(["nginx", "docker", "app"], to_string(.log_type) ?? "")
 
 sinks:
   to_siem:
@@ -52,12 +52,23 @@ sinks:
     path: "/var/log/vector/siem_logs.json"
     encoding:
       codec: json
+  to_app:
+    type: file
+    inputs:
+      - for_app
+    path: "/var/log/vector/app_logs.json"
+    encoding:
+      codec: json
 
   to_kafka:
     type: kafka
     inputs:
       - for_app
-    bootstrap_servers: "10.0.2.2:9092"
-    topic: "app_logs"
+    bootstrap_servers: "10.0.2.2:9094"
+    topic: "logs_raw"
     encoding:
       codec: json
+    buffer:
+      type: disk
+      max_size: 524288000    #(500MiB)
+      when_full: block
