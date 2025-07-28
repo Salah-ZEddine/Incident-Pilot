@@ -3,6 +3,7 @@ import json
 from dateutil.parser import isoparse
 from datetime import datetime
 from app.config import settings
+from app.models import log_model
 
 DB_CONFIG = {
     "user": settings.postgres_user,
@@ -23,17 +24,18 @@ class Database:
         if self.pool:
             await self.pool.close()
 
-    async def insert_log(self, log: dict):
+    async def insert_log(self, log_data: dict):
+        log = log_model.LogModel(**log_data)
         # Safe timestamp handling
-        ts = log.get("timestamp")
+        ts = log.timestamp
         if isinstance(ts, str):
             ts = isoparse(ts)
         elif ts is None:
             ts = datetime.utcnow()  # fallback
-            # Serialize 'extra' if it is a dict
-        extra = log.get("extra", {})
+        # Serialize 'extra' if it is a dict
+        extra = log.extra
         if isinstance(extra, dict):
-            extra = json.dumps(extra)  # convert dict to JSON string
+            extra = json.dumps(extra)
         query = """
             INSERT INTO logs (
                 timestamp, source, hostname, log_level, message,
@@ -50,20 +52,20 @@ class Database:
         async with self.pool.acquire() as conn:
             await conn.execute(query,
                 ts,
-                log.get("source"),
-                log.get("hostname"),
-                log.get("log_level"),
-                log.get("message"),
-                log.get("event_type"),
-                log.get("source_ip"),
-                log.get("destination_ip"),
-                log.get("user_id"),
-                log.get("username"),
-                log.get("http_method"),
-                log.get("http_url"),
-                log.get("http_status"),
-                log.get("user_agent"),
-                log.get("tags", []),
+                log.source,
+                log.hostname,
+                log.log_level,
+                log.message,
+                log.event_type,
+                log.source_ip,
+                log.destination_ip,
+                log.user_id,
+                log.username,
+                log.http_method,
+                log.http_url,
+                log.http_status,
+                log.user_agent,
+                log.tags,
                 extra,
-                log.get("tenant", "default"),
+                log.tenant or "default",
             )
