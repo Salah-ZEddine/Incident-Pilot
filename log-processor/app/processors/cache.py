@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import List
 from app.config import settings
 
-r = redis.Redis(host=settings.reddit_host, port=settings.reddit_port, decode_responses=True)
+r = redis.Redis(host=settings.redis_host, port=settings.redis_port, decode_responses=True)
 
 def push_log_history(source: str, log: dict):
     key = f"logs:{source}"
