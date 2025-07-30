@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_serializer
 from datetime import datetime
 from typing import Optional
 
@@ -17,3 +17,14 @@ class Fact(BaseModel):
     unauthorized_count: Optional[int] = 0
     potential_scraper: Optional[bool] = False
     performance_latency: Optional[float] = None
+
+    @field_serializer('timestamp')
+    def serialize_timestamp(self, timestamp: datetime) -> str:
+        """Serialize datetime to ISO format string"""
+        return timestamp.isoformat()
+
+    class Config:
+        # Enable JSON serialization for datetime objects
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }

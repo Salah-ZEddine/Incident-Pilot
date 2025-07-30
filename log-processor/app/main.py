@@ -80,25 +80,47 @@ class LogProcessor:
     async def handle_log(self, log_data: Dict[Any, Any]):
         """Process a single log message"""
         try:
+            # Log the raw data for debugging (only first few times)
+            if not hasattr(self, '_log_samples_shown'):
+                self._log_samples_shown = 0
+            
+            if self._log_samples_shown < 3:
+                logger.info(f"Sample raw log data: {json.dumps(log_data, indent=2, default=str)}")
+                self._log_samples_shown += 1
+
             # Parse log data into LogModel
             log = LogModel(**log_data)
-            logger.debug(f"Processing log from {log.source}: {log.message}")
+            logger.debug(f"Processing log from {log.source}: {log.message[:100] if log.message else 'No message'}...")
+            
+            # Debug log parsing (only for first few logs)
+            if self._log_samples_shown <= 3:
+                logger.info(f"Parsed log - Source: '{log.source}', Level: '{log.log_level}', Message: '{log.message}'")
 
             # Save log to PostgreSQL
             await self.repo.insert_log(log)
             logger.debug(f"Log saved to database: {log.source}")
 
             # Generate facts from the log
-            fact_generator = FactGenerator(log)
-            fact = fact_generator.generate_facts_from_log()
-            
-            # Send fact to Kafka
-            await self.producer.send_fact(fact.dict())
-            logger.debug(f"Fact sent to Kafka: {fact.source}")
+            try:
+                fact_generator = FactGenerator(log)
+                fact = fact_generator.generate_facts_from_log()
+                
+                # Send fact to Kafka (use model_dump with mode='json' for proper serialization)
+                await self.producer.send_fact(fact.model_dump(mode='json'))
+                logger.debug(f"Fact sent to Kafka: {fact.source}")
+                logger.info(f"Successfully processed log from {log.source}")
+            except Exception as fact_error:
+                logger.error(f"Error generating facts: {fact_error}")
+                logger.error(f"Log source: '{log.source}', message: '{log.message}'")
+                raise
 
         except Exception as e:
             logger.error(f"Error processing log: {e}")
-            logger.debug(f"Log data that caused error: {log_data}")
+            logger.error(f"Raw log data keys: {list(log_data.keys()) if isinstance(log_data, dict) else 'Not a dict'}")
+            if isinstance(log_data, dict) and len(str(log_data)) < 1000:
+                logger.error(f"Full log data: {log_data}")
+            else:
+                logger.error(f"Log data (truncated): {str(log_data)[:500]}...")
 
     async def run(self):
         """Main processing loop"""
