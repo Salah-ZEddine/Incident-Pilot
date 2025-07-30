@@ -2,9 +2,9 @@ import asyncpg
 import json
 import logging
 from dateutil.parser import isoparse
-from datetime import datetime
 from app.config import settings
 from app.models import log_model
+from app.models.log_model import LogModel
 
 DB_CONFIG = {
     "user": settings.postgres_user,
@@ -28,8 +28,8 @@ class Database:
         if self.pool:
             await self.pool.close()
 
-    async def insert_log(self, log_data: dict):
-        log = log_model.LogModel(**log_data)
+    async def insert_log(self, log: LogModel):
+
         # Safe timestamp handling
         ts = log.timestamp
         if isinstance(ts, str):

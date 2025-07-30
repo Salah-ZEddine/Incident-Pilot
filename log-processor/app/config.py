@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     kafka_topic_output: str
     kafka_group_id: str = "log_processor_group"
 
+    #Reddis
+    reddit_port: int
+    reddit_host: str
+
     model_config = {
         "env_file": ".env",
         "extra": "ignore",

@@ -1,42 +1,40 @@
 from app.kafka.kafka_consumer import KafkaLogConsumer
-from app.config import settings
+from app.kafka.kafka_producer import KafkaProducer
+from app.processors.facts_generator import FactGenerator
+from app.config import settings, Settings
 from db.postgres import Database
+from app.models.log_model import LogModel
 import asyncio
-from logging_config import setup_logging
+import json
 
-async def handle_log(log: dict):
-    # You’ll plug in your parser → transformer → producer → postgres here
-    print(log)
+
+async def handle_log(log_data: dict, repo: Database, fact_generator: FactGenerator, producer: KafkaProducer):
+    try:
+        log = LogModel(**log_data)
+        await repo.insert_log(log)  # Save log to PostgreSQL
+
+        facts = await fact_generator.generate_facts_from_log()  # Generate facts
+
+        for fact in facts:
+            await producer.send_fact(fact.dict())  # Send each fact to Kafka
+
+    except Exception as e:
+        print(f"[!] Error processing log: {e}\n{log_data}")
 
 async def main():
-    setup_logging()
-    consumer = KafkaLogConsumer(topic=settings.kafka_topic_input)
-    #await consumer.start()
-    #await consumer.consume(handle_log)
+    # Init services
+    repo = Database()  # Connect to DB
 
-async def test():
-    db = Database()
-    await db.connect()
-    await db.insert_log({
-    "timestamp": "2025-07-28T14:00:00Z",
-    "source": "agent",
-    "hostname": "vm-1",
-    "log_level": "INFO",
-    "message": "Test log message",
-    "event_type": "test_event",
-    "source_ip": "192.168.1.10",
-    "destination_ip": "192.168.1.1",
-    "user_id": "u123",
-    "username": "admin",
-    "http_method": "GET",
-    "http_url": "/api/test",
-    "http_status": 200,
-    "user_agent": "curl/7.85.0",
-    "tags": ["test", "debug"],
-    "extra": {"debug": True},
-    "tenant": "default"
-        })
-    await db.close()
+    consumer = KafkaLogConsumer(settings.kafka_topic_input)
+    producer = KafkaProducer(settings.kafka_bootstrap_servers,settings.kafka_topic_output)
+    fact_generator = FactGenerator()
+
+    print("🚀 Log Processor is running...")
+
+    # Consume logs forever
+    async for message in consumer.consume():
+        log_data = json.loads(message.value)
+        asyncio.create_task(handle_log(log_data, repo, fact_generator, producer))
 
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(main())
