@@ -16,36 +16,36 @@ class FactGenerator:
     def __init__(self, log: LogModel):
         self.log = log
 
-    def generate_facts_from_log(self: LogModel) -> Fact:
+    def generate_facts_from_log(self) -> Fact:
         # Push current log to history
-        push_log_history(self.source, self.dict())
-        set_last_seen(self.source, self.timestamp)
+        push_log_history(self.log.source, self.log.dict())
+        set_last_seen(self.log.source, self.log.timestamp)
 
         # Get logs in past 2min/5min/1min
-        last_2min = get_logs_within(self.source, 120)
-        last_5min = get_logs_within(self.source, 300)
-        last_1min = get_logs_within(self.source, 60)
+        last_2min = get_logs_within(self.log.source, 120)
+        last_5min = get_logs_within(self.log.source, 300)
+        last_1min = get_logs_within(self.log.source, 60)
 
         # Count occurrences
         error_logs = [l for l in last_2min if l["log_level"] == "ERROR"]
         warn_logs = [l for l in last_5min if l["log_level"] == "WARN"]
         repeated_errors = [
-            l for l in last_2min if l["log_level"] == "ERROR" and l["message"] == self.message
+            l for l in last_2min if l["log_level"] == "ERROR" and l["message"] == self.log.message
         ]
         unauthorized_logs = [
             l for l in last_5min if any(k in l["message"].lower() for k in ["unauthorized", "login failed", "403"])
         ]
         failed_syscalls = any(
-            re.search(r"(failed to connect|timeout|connection refused|disk full)", self.message, re.IGNORECASE)
+            re.search(r"(failed to connect|timeout|connection refused|disk full)", self.log.message, re.IGNORECASE)
         )
 
-        matched_pattern = next((p for p in SUSPICIOUS_PATTERNS if re.search(p, self.message, re.IGNORECASE)), None)
+        matched_pattern = next((p for p in SUSPICIOUS_PATTERNS if re.search(p, self.log.message, re.IGNORECASE)), None)
 
         # Silence detection
-        last_seen = get_last_seen(self.source)
+        last_seen = get_last_seen(self.log.source)
         is_silent = False
         if last_seen:
-            silence_threshold = self.timestamp - timedelta(minutes=10)
+            silence_threshold = self.log.timestamp - timedelta(minutes=10)
             is_silent = last_seen < silence_threshold
 
         # Potential scrapers: too many GETs to different URLs
@@ -54,10 +54,10 @@ class FactGenerator:
         potential_scraper = len(get_requests) >= 20 and len(distinct_urls) >= 15
 
         return Fact(
-            timestamp=self.timestamp,
-            source=self.source,
-            log_level=self.log_level,
-            message=self.message,
+            timestamp=self.log.timestamp,
+            source=self.log.source,
+            log_level=self.log.log_level,
+            message=self.log.message,
             recent_error_count=len(error_logs),
             recent_warn_count=len(warn_logs),
             repeated_error_count=len(repeated_errors),
@@ -67,5 +67,5 @@ class FactGenerator:
             is_silent=is_silent,
             log_frequency_last_minute=len(last_1min),
             potential_scraper=potential_scraper,
-            performance_latency=self.extra.get("latency", None) if self.extra else None,
+            performance_latency=self.log.extra.get("latency", None) if self.log.extra else None,
         )

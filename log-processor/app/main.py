@@ -1,40 +1,134 @@
+import asyncio
+import json
+import logging
+import signal
+import sys
+from typing import Dict, Any
+
 from app.kafka.kafka_consumer import KafkaLogConsumer
 from app.kafka.kafka_producer import KafkaProducer
 from app.processors.facts_generator import FactGenerator
-from app.config import settings, Settings
-from db.postgres import Database
+from app.config import settings
+from app.db.postgres import Database
 from app.models.log_model import LogModel
-import asyncio
-import json
+from app.logging_config import setup_logging
 
+# Setup logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
-async def handle_log(log_data: dict, repo: Database, fact_generator: FactGenerator, producer: KafkaProducer):
-    try:
-        log = LogModel(**log_data)
-        await repo.insert_log(log)  # Save log to PostgreSQL
+class LogProcessor:
+    def __init__(self):
+        self.repo = None
+        self.consumer = None
+        self.producer = None
+        self.running = False
 
-        facts = await fact_generator.generate_facts_from_log()  # Generate facts
+    async def start(self):
+        """Initialize and start all services"""
+        try:
+            logger.info("Starting Log Processor...")
+            
+            # Initialize database connection
+            self.repo = Database()
+            await self.repo.connect()
+            logger.info("Database connection established")
 
-        for fact in facts:
-            await producer.send_fact(fact.dict())  # Send each fact to Kafka
+            # Initialize Kafka consumer
+            self.consumer = KafkaLogConsumer(settings.kafka_topic_input)
+            await self.consumer.start()
+            logger.info(f"Kafka consumer started for topic: {settings.kafka_topic_input}")
 
-    except Exception as e:
-        print(f"[!] Error processing log: {e}\n{log_data}")
+            # Initialize Kafka producer
+            self.producer = KafkaProducer(settings.kafka_bootstrap_servers, settings.kafka_topic_output)
+            await self.producer.start()
+            logger.info(f"Kafka producer started for topic: {settings.kafka_topic_output}")
+
+            self.running = True
+            logger.info("🚀 Log Processor is running successfully!")
+
+        except Exception as e:
+            logger.error(f"Failed to start Log Processor: {e}")
+            await self.stop()
+            raise
+
+    async def stop(self):
+        """Gracefully stop all services"""
+        if not self.running:
+            return
+            
+        logger.info("Stopping Log Processor...")
+        self.running = False
+
+        # Stop Kafka consumer
+        if self.consumer:
+            await self.consumer.stop()
+            logger.info("Kafka consumer stopped")
+
+        # Stop Kafka producer
+        if self.producer:
+            await self.producer.stop()
+            logger.info("Kafka producer stopped")
+
+        # Close database connection
+        if self.repo:
+            await self.repo.close()
+            logger.info("Database connection closed")
+
+        logger.info("Log Processor stopped gracefully")
+
+    async def handle_log(self, log_data: Dict[Any, Any]):
+        """Process a single log message"""
+        try:
+            # Parse log data into LogModel
+            log = LogModel(**log_data)
+            logger.debug(f"Processing log from {log.source}: {log.message}")
+
+            # Save log to PostgreSQL
+            await self.repo.insert_log(log)
+            logger.debug(f"Log saved to database: {log.source}")
+
+            # Generate facts from the log
+            fact_generator = FactGenerator(log)
+            fact = fact_generator.generate_facts_from_log()
+            
+            # Send fact to Kafka
+            await self.producer.send_fact(fact.dict())
+            logger.debug(f"Fact sent to Kafka: {fact.source}")
+
+        except Exception as e:
+            logger.error(f"Error processing log: {e}")
+            logger.debug(f"Log data that caused error: {log_data}")
+
+    async def run(self):
+        """Main processing loop"""
+        try:
+            await self.start()
+            
+            # Start consuming logs
+            await self.consumer.consume(self.handle_log)
+            
+        except KeyboardInterrupt:
+            logger.info("Received interrupt signal")
+        except Exception as e:
+            logger.error(f"Unexpected error in main loop: {e}")
+        finally:
+            await self.stop()
+
+def signal_handler(sig, frame):
+    """Handle shutdown signals"""
+    logger.info(f"Received signal {sig}, initiating shutdown...")
+    sys.exit(0)
 
 async def main():
-    # Init services
-    repo = Database()  # Connect to DB
+    """Main entry point"""
+    # Setup signal handlers for graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
-    consumer = KafkaLogConsumer(settings.kafka_topic_input)
-    producer = KafkaProducer(settings.kafka_bootstrap_servers,settings.kafka_topic_output)
-    fact_generator = FactGenerator()
-
-    print("🚀 Log Processor is running...")
-
-    # Consume logs forever
-    async for message in consumer.consume():
-        log_data = json.loads(message.value)
-        asyncio.create_task(handle_log(log_data, repo, fact_generator, producer))
+    # Create and run the log processor
+    processor = LogProcessor()
+    await processor.run()
 
 if __name__ == "__main__":
     asyncio.run(main())
