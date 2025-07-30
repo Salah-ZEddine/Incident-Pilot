@@ -2,13 +2,14 @@ from app.kafka.kafka_consumer import KafkaLogConsumer
 from app.config import settings
 from db.postgres import Database
 import asyncio
-
+from logging_config import setup_logging
 
 async def handle_log(log: dict):
     # You’ll plug in your parser → transformer → producer → postgres here
     print(log)
 
 async def main():
+    setup_logging()
     consumer = KafkaLogConsumer(topic=settings.kafka_topic_input)
     #await consumer.start()
     #await consumer.consume(handle_log)

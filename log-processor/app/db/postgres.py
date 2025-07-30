@@ -1,5 +1,6 @@
 import asyncpg
 import json
+import logging
 from dateutil.parser import isoparse
 from datetime import datetime
 from app.config import settings
@@ -12,6 +13,9 @@ DB_CONFIG = {
     "host": settings.postgres_host,
     "port": settings.postgres_port,
 }
+
+logger = logging.getLogger(__name__)
+
 
 class Database:
     def __init__(self):
@@ -31,7 +35,8 @@ class Database:
         if isinstance(ts, str):
             ts = isoparse(ts)
         elif ts is None:
-            ts = datetime.utcnow()  # fallback
+            logger.error("timestamp is null")
+            #ts = datetime.utcnow()  # fallback
         # Serialize 'extra' if it is a dict
         extra = log.extra
         if isinstance(extra, dict):
