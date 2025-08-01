@@ -12,14 +12,14 @@ This directory contains the Docker configuration for the Incident Pilot Log Proc
 ### Option 1: Using Docker Compose (Recommended)
 ```bash
 # From the project root directory
-cd d:\projects\stage_sophatel\incident-pilot
+cd your/project/directory
 docker-compose build log-processor
 ```
 
 ### Option 2: Using Docker Build
 ```bash
 # From the log-processor directory
-cd d:\projects\Incident-Pilot\log-processor
+cd your/project/directory
 docker build -t incident-pilot/log-processor:latest .
 ```
 
