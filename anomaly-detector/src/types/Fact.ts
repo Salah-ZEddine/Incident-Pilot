@@ -1,4 +1,4 @@
-export interface Fact {
+export type Fact = {
   timestamp: string;            // ISO8601 datetime string (serialize datetime to ISO)
   source: string;
   log_level: string;
