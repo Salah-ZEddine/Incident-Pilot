@@ -2,7 +2,7 @@
   "type": "module",
   "scripts": {
     "start": "node ./dist/main.js",
-    "dev": "ts-node src/main.ts"
+    "dev": "node --loader ts-node/esm src/index.ts"
   },
   "name": "anomaly-detector",
   "version": "1.0.0",

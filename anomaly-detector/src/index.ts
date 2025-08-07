@@ -64,7 +64,7 @@ class AnomalyDetectorService {
       
       if (!fs.existsSync(rulesDir)) {
         console.warn('⚠️ Rules directory not found, creating with sample rules...');
-        this.createSampleRules(rulesDir);
+        // this.createSampleRules(rulesDir);
       }
 
       const ruleFiles = fs.readdirSync(rulesDir).filter(file => file.endsWith('.json'));
@@ -92,69 +92,69 @@ class AnomalyDetectorService {
     }
   }
 
-  private createSampleRules(rulesDir: string): void {
-    fs.mkdirSync(rulesDir, { recursive: true });
+//   private createSampleRules(rulesDir: string): void {
+//     fs.mkdirSync(rulesDir, { recursive: true });
     
-    const sampleRules = [
-      {
-        name: 'high-error-rate',
-        conditions: {
-          all: [
-            { fact: 'repeated_error_count', operator: 'greaterThan', value: 10 }
-          ]
-        },
-        event: {
-          type: 'high-error-rate',
-          params: { severity: 'high', description: 'High error rate detected' }
-        }
-      },
-      {
-        name: 'potential-scraper',
-        conditions: {
-          all: [
-            { fact: 'potential_scraper', operator: 'equal', value: true }
-          ]
-        },
-        event: {
-          type: 'potential-scraper',
-          params: { severity: 'medium', description: 'Potential web scraper detected' }
-        }
-      },
-      {
-        name: 'silence-detection',
-        conditions: {
-          all: [
-            { fact: 'is_silent', operator: 'equal', value: true }
-          ]
-        },
-        event: {
-          type: 'silence-detected',
-          params: { severity: 'medium', description: 'Service silence detected' }
-        }
-      },
-      {
-        name: 'repeated-errors',
-        conditions: {
-          all: [
-            { fact: 'repeated_error_count', operator: 'greaterThan', value: 5 }
-          ]
-        },
-        event: {
-          type: 'repeated-errors',
-          params: { severity: 'medium', description: 'Repeated errors detected' }
-        }
-      }
-    ];
+//     const sampleRules = [
+//       {
+//         name: 'high-error-rate',
+//         conditions: {
+//           all: [
+//             { fact: 'repeated_error_count', operator: 'greaterThan', value: 10 }
+//           ]
+//         },
+//         event: {
+//           type: 'high-error-rate',
+//           params: { severity: 'high', description: 'High error rate detected' }
+//         }
+//       },
+//       {
+//         name: 'potential-scraper',
+//         conditions: {
+//           all: [
+//             { fact: 'potential_scraper', operator: 'equal', value: true }
+//           ]
+//         },
+//         event: {
+//           type: 'potential-scraper',
+//           params: { severity: 'medium', description: 'Potential web scraper detected' }
+//         }
+//       },
+//       {
+//         name: 'silence-detection',
+//         conditions: {
+//           all: [
+//             { fact: 'is_silent', operator: 'equal', value: true }
+//           ]
+//         },
+//         event: {
+//           type: 'silence-detected',
+//           params: { severity: 'medium', description: 'Service silence detected' }
+//         }
+//       },
+//       {
+//         name: 'repeated-errors',
+//         conditions: {
+//           all: [
+//             { fact: 'repeated_error_count', operator: 'greaterThan', value: 5 }
+//           ]
+//         },
+//         event: {
+//           type: 'repeated-errors',
+//           params: { severity: 'medium', description: 'Repeated errors detected' }
+//         }
+//       }
+//     ];
 
-    sampleRules.forEach(rule => {
-      fs.writeFileSync(
-        path.join(rulesDir, `${rule.name}.json`),
-        JSON.stringify(rule, null, 2)
-      );
-    });
+//     sampleRules.forEach(rule => {
+//       fs.writeFileSync(
+//         path.join(rulesDir, `${rule.name}.json`),
+//         JSON.stringify(rule, null, 2)
+//       );
+//     });
 
-    console.log(`📋 Created ${sampleRules.length} sample rules`);
-  }
+//     console.log(`📋 Created ${sampleRules.length} sample rules`);
+//   }
 
   private async handleMessage(payload: EachMessagePayload): Promise<void> {
     try {
