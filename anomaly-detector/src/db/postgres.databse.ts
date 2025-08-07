@@ -22,14 +22,14 @@ export class PostgresDatabaseService implements IDatabaseService {
     await this.pool.end();
   }
 
-  async insertAlert(alert: Alert): Promise<void> {
+  async insertAlert(alert: Alert): Promise<Alert> {
     // Insert alert into PostgreSQL database
     const query = `
       INSERT INTO alerts (alert_id, timestamp, rule_name, description, severity, log_reference_ids, tags, detected_by, suggested_action, facts)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING alert_id;
     `;
     const values = [
-      alert.alert_id,
       alert.timestamp,
       alert.rule_name,
       alert.description,
@@ -40,6 +40,7 @@ export class PostgresDatabaseService implements IDatabaseService {
       alert.suggested_action,
       alert.facts,
     ];
-    await this.pool.query(query, values);
+    const result = await this.pool.query(query, values);
+    return result.rows[0];
   }
 }

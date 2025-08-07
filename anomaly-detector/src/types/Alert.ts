@@ -1,5 +1,5 @@
 export type Alert = {
-  alert_id: string;
+  alert_id?: string; // Unique identifier for the alert
   timestamp: Date; 
   rule_name: string;
   description: string;
