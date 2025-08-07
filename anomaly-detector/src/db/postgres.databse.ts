@@ -25,8 +25,8 @@ export class PostgresDatabaseService implements IDatabaseService {
   async insertAlert(alert: Alert): Promise<Alert> {
     // Insert alert into PostgreSQL database
     const query = `
-      INSERT INTO alerts (alert_id, timestamp, rule_name, description, severity, log_reference_ids, tags, detected_by, suggested_action, facts)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO alerts (timestamp, rule_name, description, severity, log_reference_ids, tags, detected_by, suggested_action, facts)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING alert_id;
     `;
     const values = [

@@ -1,0 +1,19 @@
+{
+  "name": "System Call Failure",
+  "conditions": {
+    "all": [
+      {
+        "fact": "failed_syscall",
+        "operator": "equal",
+        "value": true
+      }
+    ]
+  },
+  "event": {
+    "type": "failed-syscall-alert",
+    "params": {
+      "message": "Detected system call failure (connection timeout/refused/disk full/etc.)",
+      "severity": "critical"
+    }
+  }
+}

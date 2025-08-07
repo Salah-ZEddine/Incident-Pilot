@@ -1,0 +1,19 @@
+{
+  "name": "Pattern Match: Suspicious",
+  "conditions": {
+    "all": [
+      {
+        "fact": "matched_pattern",
+        "operator": "notEqual",
+        "value": null
+      }
+    ]
+  },
+  "event": {
+    "type": "suspicious-pattern-alert",
+    "params": {
+      "message": "Log message matches a suspicious pattern",
+      "severity": "high"
+    }
+  }
+}

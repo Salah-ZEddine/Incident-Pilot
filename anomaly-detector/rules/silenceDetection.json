@@ -1,0 +1,19 @@
+{
+  "name": "Silence Detected",
+  "conditions": {
+    "all": [
+      {
+        "fact": "is_silent",
+        "operator": "equal",
+        "value": true
+      }
+    ]
+  },
+  "event": {
+    "type": "silence-alert",
+    "params": {
+      "message": "No logs received from source recently",
+      "severity": "critical"
+    }
+  }
+}

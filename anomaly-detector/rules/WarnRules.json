@@ -1,0 +1,19 @@
+{
+  "name": "High WARN Rate",
+  "conditions": {
+    "all": [
+      {
+        "fact": "recent_warn_count",
+        "operator": "greaterThanInclusive",
+        "value": 10
+      }
+    ]
+  },
+  "event": {
+    "type": "warn-spike-alert",
+    "params": {
+      "message": "High number of WARN logs from source in last 5 minutes",
+      "severity": "medium"
+    }
+  }
+}

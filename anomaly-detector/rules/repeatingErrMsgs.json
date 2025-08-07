@@ -1,0 +1,24 @@
+{
+  "name": "Repeating ERROR Message",
+  "conditions": {
+    "all": [
+      {
+        "fact": "log_level",
+        "operator": "equal",
+        "value": "ERROR"
+      },
+      {
+        "fact": "repeated_error_count",
+        "operator": "greaterThanInclusive",
+        "value": 3
+      }
+    ]
+  },
+  "event": {
+    "type": "repeated-error-alert",
+    "params": {
+      "message": "Repeated ERROR message from source",
+      "severity": "high"
+    }
+  }
+}

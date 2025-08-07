@@ -1,0 +1,19 @@
+{
+  "name": "Unauthorized Access Attempts",
+  "conditions": {
+    "all": [
+      {
+        "fact": "unauthorized_count",
+        "operator": "greaterThanInclusive",
+        "value": 3
+      }
+    ]
+  },
+  "event": {
+    "type": "unauthorized-attempts-alert",
+    "params": {
+      "message": "Multiple unauthorized access attempts detected",
+      "severity": "medium"
+    }
+  }
+}

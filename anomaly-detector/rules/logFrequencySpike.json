@@ -1,0 +1,19 @@
+{
+  "name": "Log Frequency Spike",
+  "conditions": {
+    "all": [
+      {
+        "fact": "log_frequency_last_minute",
+        "operator": "greaterThanInclusive",
+        "value": 100
+      }
+    ]
+  },
+  "event": {
+    "type": "log-spike-alert",
+    "params": {
+      "message": "Unusual spike in log volume",
+      "severity": "high"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "Performance Latency Alert",
+  "conditions": {
+    "all": [
+      {
+        "fact": "performance_latency",
+        "operator": "greaterThan",
+        "value": 2000
+      }
+    ]
+  },
+  "event": {
+    "type": "latency-alert",
+    "params": {
+      "message": "High request latency detected",
+      "severity": "high"
+    }
+  }
+}

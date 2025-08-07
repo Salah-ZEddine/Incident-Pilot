@@ -1,0 +1,19 @@
+{
+  "name": "High ERROR Rate",
+  "conditions": {
+    "all": [
+      {
+        "fact": "recent_error_count",
+        "operator": "greaterThanInclusive",
+        "value": 5
+      }
+    ]
+  },
+  "event": {
+    "type": "error-spike-alert",
+    "params": {
+      "message": "High number of ERROR logs from source in last 2 minutes",
+      "severity": "high"
+    }
+  }
+}

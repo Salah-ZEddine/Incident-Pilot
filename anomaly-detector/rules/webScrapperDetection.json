@@ -1,0 +1,19 @@
+{
+  "name": "Potential Web Scraper",
+  "conditions": {
+    "all": [
+      {
+        "fact": "potential_scraper",
+        "operator": "equal",
+        "value": true
+      }
+    ]
+  },
+  "event": {
+    "type": "scraper-detected-alert",
+    "params": {
+      "message": "Potential web scraping activity detected",
+      "severity": "low"
+    }
+  }
+}
