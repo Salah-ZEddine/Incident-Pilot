@@ -16,10 +16,19 @@ class FactGenerator:
     def __init__(self, log: LogModel):
         self.log = log
 
+    @staticmethod
+    def normalize_message(message: str) -> str:
+        # Remove ISO timestamps and extra spaces
+        return re.sub(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?",
+            "",
+            message
+        ).strip()
+
     def generate_facts_from_log(self) -> Fact:
         # Ensure we have a valid source
         source = self.log.source or 'unknown'
-        
+
         # Push current log to history (use mode='json' for proper datetime serialization)
         push_log_history(source, self.log.model_dump(mode='json'))
         set_last_seen(source, self.log.timestamp)
@@ -32,8 +41,12 @@ class FactGenerator:
         # Count occurrences
         error_logs = [l for l in last_2min if l.get("log_level") == "ERROR"]
         warn_logs = [l for l in last_5min if l.get("log_level") == "WARN"]
+        normalized_current = self.normalize_message(self.log.message or "")
+
         repeated_errors = [
-            l for l in last_2min if l.get("log_level") == "ERROR" and l.get("message") == self.log.message
+            l for l in last_2min
+            if l.get("log_level") == "ERROR"
+               and self.normalize_message(l.get("message") or "") == normalized_current
         ]
         unauthorized_logs = [
             l for l in last_5min if any(k in (l.get("message") or "").lower() for k in ["unauthorized", "login failed", "403"])

@@ -1,5 +1,5 @@
 import { KafkaService } from './services/KafkaService.js';
-import { FactHandler } from './services/FacthHnadler.js';
+import { FactHandler } from './services/FacthHandler.js';
 import { PostgresDatabaseService } from './db/postgres.databse.js';
 import { Fact } from './types/Fact.js';
 import { EachMessagePayload } from 'kafkajs';
