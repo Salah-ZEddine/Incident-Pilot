@@ -1,0 +1,64 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: incident-pilot-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - kafka-network
+    restart: unless-stopped
+
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: incident-kafka
+    env_file:
+      - .env
+    ports:
+      - "9094:9094"
+      - "9095:9095"
+    volumes:
+      - kafka_data:/bitnami/kafka
+    networks:
+      - kafka-network
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: incident-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - '8080:8080'
+    env_file:
+      - .env
+    networks:
+      - kafka-network
+  redis:
+    image: redis:7-alpine
+    container_name: incident-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+    networks:
+      - kafka-network
+
+volumes:
+  kafka_data:
+  postgres_data:
+  redis_data:
+networks:
+  kafka-network:
+    driver: bridge
