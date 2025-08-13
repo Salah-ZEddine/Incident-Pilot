@@ -1,4 +1,4 @@
-from app.config import Settings
+from typing import List, Optional, Dict
 from app.models.log_model import LogModel
 from app.models.fact_model import Fact
 from app.processors.cache import get_logs_within, push_log_history, get_last_seen, set_last_seen
@@ -12,9 +12,24 @@ SUSPICIOUS_PATTERNS = [
 ]
 
 
+ERROR_WINDOW_SEC = 120
+WARN_WINDOW_SEC = 300
+REPEATED_ERROR_WINDOW_SEC = 120
+UNAUTHORIZED_WINDOW_SEC = 300
+SCRAPER_WINDOW_SEC = 60
+
+SCRAPER_MIN_GETS = 20
+SCRAPER_MIN_DISTINCT_URLS = 15
+SILENCE_THRESHOLD_MINUTES = 10
+
+def safe_get_logs(source: str, seconds: int) -> List[Dict]:
+    """Fetch logs within given time window, always returns a list."""
+    return get_logs_within(source, seconds) or []
+
 class FactGenerator:
     def __init__(self, log: LogModel):
         self.log = log
+        self.source = log.source or log.hostname or 'source-not-passed'
 
     @staticmethod
     def normalize_message(message: str) -> str:
@@ -26,62 +41,100 @@ class FactGenerator:
         ).strip()
 
     def generate_facts_from_log(self) -> Fact:
-        # Ensure we have a valid source
-        source = self.log.source or 'source-not-passed'
+        # --- Silence detection (fetch last_seen before updating it) ---
+        previous_last_seen = get_last_seen(self.source)
+        is_silent = self._detect_silence(previous_last_seen)
 
-        # Push current log to history (use mode='json' for proper datetime serialization)
-        push_log_history(source, self.log.model_dump(mode='json'))
-        set_last_seen(source, self.log.timestamp)
+        # Push current log to history (after silence detection)
+        push_log_history(self.source, self.log.model_dump(mode='json'))
+        set_last_seen(self.source, self.log.timestamp)
 
-        # Get logs in past 2min/5min/1min
-        last_2min = get_logs_within(source, 120) or []
-        last_5min = get_logs_within(source, 300) or []
-        last_1min = get_logs_within(source, 60) or []
+        # Fetch logs for different windows
+        last_2min = safe_get_logs(self.source, ERROR_WINDOW_SEC)
+        last_5min = safe_get_logs(self.source, WARN_WINDOW_SEC)
+        last_1min = safe_get_logs(self.source, SCRAPER_WINDOW_SEC)
 
-        # Count occurrences
-        error_logs = [l for l in last_2min if l.get("log_level") == "ERROR"]
-        warn_logs = [l for l in last_5min if l.get("log_level") == "WARN"]
-        normalized_current = self.normalize_message(self.log.message or "")
-
-        repeated_errors = [
-            l for l in last_2min
-            if l.get("log_level") == "ERROR"
-               and self.normalize_message(l.get("message") or "") == normalized_current
-        ]
-        unauthorized_logs = [
-            l for l in last_5min if any(k in (l.get("message") or "").lower() for k in ["unauthorized", "login failed", "403"])
-        ]
-        failed_syscalls = bool(
-            re.search(r"(failed to connect|timeout|connection refused|disk full)", self.log.message or "", re.IGNORECASE)
-        )
-
-        matched_pattern = next((p for p in SUSPICIOUS_PATTERNS if re.search(p, self.log.message or "", re.IGNORECASE)), None)
-
-        # Silence detection
-        last_seen = get_last_seen(source)
-        is_silent = False
-        if last_seen:
-            silence_threshold = self.log.timestamp - timedelta(minutes=10)
-            is_silent = last_seen < silence_threshold
-
-        # Potential scrapers: too many GETs to different URLs
-        get_requests = [l for l in last_1min if l.get("http_method") == "GET"]
-        distinct_urls = set([l.get("http_url") for l in get_requests if l.get("http_url")])
-        potential_scraper = len(get_requests) >= 20 and len(distinct_urls) >= 15
+        # Compute facts
+        error_count = self._count_logs_by_level(last_2min, "ERROR")
+        warn_count = self._count_logs_by_level(last_5min, "WARN")
+        repeated_error_count = self._count_repeated_errors(last_2min)
+        unauthorized_count = self._count_unauthorized(last_5min)
+        failed_syscall = self._has_failed_syscall()
+        matched_pattern = self._match_suspicious_pattern()
+        potential_scraper = self._detect_scraper(last_1min)
+        latency = self._get_latency()
 
         return Fact(
             timestamp=self.log.timestamp,
-            source=source,
+            source=self.source,
             log_level=self.log.log_level or "INFO",
             message=self.log.message or "",
-            recent_error_count=len(error_logs),
-            recent_warn_count=len(warn_logs),
-            repeated_error_count=len(repeated_errors),
-            unauthorized_count=len(unauthorized_logs),
-            failed_syscall=failed_syscalls,
+            recent_error_count=error_count,
+            recent_warn_count=warn_count,
+            repeated_error_count=repeated_error_count,
+            unauthorized_count=unauthorized_count,
+            failed_syscall=failed_syscall,
             matched_pattern=matched_pattern,
             is_silent=is_silent,
             log_frequency_last_minute=len(last_1min),
             potential_scraper=potential_scraper,
-            performance_latency=self.log.extra.get("latency", None) if self.log.extra else None,
+            performance_latency=latency
         )
+
+    # === Helper Methods ===
+
+    def _count_logs_by_level(self, logs: List[Dict], level: str) -> int:
+        return sum(1 for l in logs if l.get("log_level") == level)
+
+    def _count_repeated_errors(self, logs: List[Dict]) -> int:
+        normalized_current = self.normalize_message(self.log.message or "")
+        return sum(
+            1 for l in logs
+            if l.get("log_level") == "ERROR" and
+            self.normalize_message(l.get("message") or "") == normalized_current
+        )
+
+    def _count_unauthorized(self, logs: List[Dict]) -> int:
+        keywords = ["unauthorized", "login failed", "403"]
+        return sum(
+            1 for l in logs
+            if any(k in (l.get("message") or "").lower() for k in keywords)
+        )
+
+    def _has_failed_syscall(self) -> bool:
+        return bool(
+            re.search(
+                r"(failed to connect|timeout|connection refused|disk full)",
+                self.log.message or "",
+                re.IGNORECASE
+            )
+        )
+
+    def _match_suspicious_pattern(self) -> Optional[str]:
+        for pattern in SUSPICIOUS_PATTERNS:
+            try:
+                if re.search(pattern, self.log.message or "", re.IGNORECASE):
+                    return pattern
+            except re.error:
+                # Skip malformed regex
+                continue
+        return None
+
+    def _detect_silence(self, last_seen) -> bool:
+        if not last_seen:
+            return False
+        silence_threshold = self.log.timestamp - timedelta(minutes=SILENCE_THRESHOLD_MINUTES)
+        return last_seen < silence_threshold
+
+    def _detect_scraper(self, logs: List[Dict]) -> bool:
+        get_requests = [l for l in logs if l.get("http_method") == "GET"]
+        distinct_urls = {l.get("http_url") for l in get_requests if l.get("http_url")}
+        return (
+                len(get_requests) >= SCRAPER_MIN_GETS and
+                len(distinct_urls) >= SCRAPER_MIN_DISTINCT_URLS
+        )
+
+    def _get_latency(self) -> Optional[float]:
+        if isinstance(self.log.extra, dict):
+            return self.log.extra.get("latency")
+        return None
