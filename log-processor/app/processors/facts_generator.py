@@ -27,7 +27,7 @@ class FactGenerator:
 
     def generate_facts_from_log(self) -> Fact:
         # Ensure we have a valid source
-        source = self.log.source or 'unknown'
+        source = self.log.source or 'source-not-passed'
 
         # Push current log to history (use mode='json' for proper datetime serialization)
         push_log_history(source, self.log.model_dump(mode='json'))

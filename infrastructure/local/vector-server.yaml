@@ -42,7 +42,7 @@ transforms:
     type: filter
     inputs:
       - add_server_metadata
-    condition: includes(["nginx", "docker", "app"], to_string(.log_type) ?? "")
+    condition: includes(["nginx", "docker", "unknown", "test", "app"], to_string(.log_type) ?? "")
 
 sinks:
   to_siem:

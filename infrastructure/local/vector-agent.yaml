@@ -32,7 +32,17 @@ sources:
 
   journald_logs:
     type: journald
-    include_units: ["sshd", "nginx", "docker", "systemd", "auditd"]   # Leave empty to include all units (e.g. sshd, systemd, etc.)
+    include_units: ["sshd", "nginx", "docker", "systemd", "auditd"]
+
+  test_file:
+    type: file
+    include:
+      - /var/log/vector/test-logs.log
+    read_from: beginning
+    ignore_older_secs: 0
+    fingerprint:
+      strategy: device_and_inode
+      ignored_header_bytes: 0
 
 transforms:
   add_hostname:
@@ -69,9 +79,19 @@ transforms:
         .log_type = "unknown"
       }
 
+  tag_log_type_docker:
+    type: remap
+    inputs: [docker_logs]
+    source: |
+      if !exists(.log_type) || .log_type == "unknown" {
+        if .source_type == "docker_logs" {
+          .log_type = "docker"
+        }
+      }
+
   parse_json_logs:
     type: remap
-    inputs: [tag_log_type_by_unit]  # changed from add_hostname
+    inputs: [tag_log_type_docker]  # changed from add_hostname
     source: |
       parsed, err = parse_json(.message)
       if err == null {
@@ -93,6 +113,13 @@ transforms:
       .received_at = now()
       .app_source = .source
 
+  parse_json:
+    type: remap
+    inputs:
+      - test_file
+    source: |
+      . = parse_json!(.message)
+    
 sinks:
   to_disk_file:
     type: file
@@ -104,7 +131,7 @@ sinks:
 
   to_vector:
     type: vector
-    inputs: [add_metadata]
+    inputs: [add_metadata, parse_json]
     address: 192.168.56.13:9000
     acknowledgements: false
     healthcheck: false

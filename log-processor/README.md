@@ -221,3 +221,18 @@ The Docker image is optimized for:
 - Security with non-root user
 - Health monitoring
 - Graceful shutdown handling
+
+## License  
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)  
+
+This project is licensed under the **GNU General Public License v3.0**. See the [LICENSE](https://github.com/Salah-ZEddine/Incident-Pilot/blob/master/LICENSE) file for full terms.
+
+## 🙋‍♂️ Support
+
+- **Documentation**: [Wiki](https://github.com/Salah-ZEddine/Incident-Pilot/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Salah-ZEddine/Incident-Pilot/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Salah-ZEddine/Incident-Pilot/discussions)
+
+---
+
+**Built with ❤️ for reliable incident management**

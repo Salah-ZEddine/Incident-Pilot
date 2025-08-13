@@ -1,5 +1,5 @@
-import { Consumer, EachMessagePayload } from 'kafkajs';
-import { kafkaConsumer } from '../config/kafka.config.js';
+import { Consumer, EachMessagePayload } from "kafkajs";
+import { kafkaConsumer } from "../config/kafka.config.js";
 
 type MessageHandler = (payload: EachMessagePayload) => Promise<void>;
 
@@ -21,7 +21,7 @@ export class KafkaService {
         try {
           await this.handler(payload);
         } catch (error) {
-          console.error('[KafkaService] Error handling message:', error);
+          console.error("[KafkaService] Error handling message:", error);
         }
       },
     });
@@ -29,6 +29,6 @@ export class KafkaService {
 
   async stop(): Promise<void> {
     await this.consumer.disconnect();
-    console.log('[KafkaService] Consumer disconnected.');
+    console.log("[KafkaService] Consumer disconnected.");
   }
 }
