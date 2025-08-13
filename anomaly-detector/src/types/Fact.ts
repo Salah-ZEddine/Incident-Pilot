@@ -3,6 +3,7 @@ export type Fact = {
   source: string;
   log_level: string;
   message: string;
+  log_ids?: string[];      // optional array of log IDs
 
   repeated_error_count?: number;     // default 0
   recent_error_count?: number;       // default 0

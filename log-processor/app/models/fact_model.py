@@ -1,12 +1,13 @@
 from pydantic import BaseModel, field_serializer
 from datetime import datetime
-from typing import Optional
+from typing import Optional,List
 
 class Fact(BaseModel):
     timestamp: datetime
     source: str
     log_level: str
     message: str
+    log_ids: Optional[List[str]] = None
     repeated_error_count: Optional[int] = 0
     recent_error_count: Optional[int] = 0
     recent_warn_count: Optional[int] = 0

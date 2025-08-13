@@ -349,29 +349,27 @@ export class FactHandler {
   }
 
   private extractLogReferenceIds(fact: Fact): string[] {
-    // Extract log reference IDs if available in your fact structure
     const logIds: string[] = [];
 
-    // If your fact has a log ID field
-    if ("log_id" in fact && fact.log_id) {
-      logIds.push(String(fact.log_id));
+    // Extract log_ids if present
+    if (fact.log_ids?.length) {
+        logIds.push(...fact.log_ids.map(String));
     }
 
-    // If your fact has related log IDs
+    // Extract related_log_ids if present
     if ("related_log_ids" in fact && Array.isArray(fact.related_log_ids)) {
       logIds.push(...fact.related_log_ids.map((id) => String(id)));
     }
 
-    // If no specific log IDs, create a reference based on fact timestamp and source
+    // Fallback reference
     if (logIds.length === 0) {
-      const reference = `${fact.source}-${
-        fact.timestamp?.toString() || new Date().toISOString()
-      }`;
-      logIds.push(reference);
+        const reference = `${fact.source}-${fact.timestamp || new Date().toISOString()}`;
+        logIds.push(reference);
     }
 
     return logIds;
-  }
+}
+
 
   private async processAnomaly(fact: Fact, anomaly: Event): Promise<void> {
     // Placeholder for specific anomaly processing
